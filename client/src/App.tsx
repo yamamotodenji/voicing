@@ -109,9 +109,8 @@ function App() {
   
   // コントロールパネルの状態
   const [voicingType, setVoicingType] = useState<'close' | 'open' | 'drop2' | 'drop3'>('close');
-  const [instrument, setInstrument] = useState<'piano' | 'synth' | 'organ' | 'strings'>('piano');
   const [tempo, setTempo] = useState(120);
-  const [volume, setVolume] = useState(50);
+  const [volume, setVolume] = useState(12);
 
   // オーディオプレイヤーの初期化
   const handleInitializeAudio = async () => {
@@ -178,13 +177,6 @@ function App() {
     setIsPlaying(false);
   };
 
-  // 楽器音色変更
-  const handleInstrumentChange = (newInstrument: 'piano' | 'synth' | 'organ' | 'strings') => {
-    setInstrument(newInstrument);
-    if (isAudioInitialized) {
-      audioPlayer.setInstrument(newInstrument);
-    }
-  };
 
   // テンポ変更
   const handleTempoChange = (newTempo: number) => {
@@ -228,8 +220,6 @@ function App() {
             <ControlPanel
               voicingType={voicingType}
               onVoicingTypeChange={setVoicingType}
-              instrument={instrument}
-              onInstrumentChange={handleInstrumentChange}
               tempo={tempo}
               onTempoChange={handleTempoChange}
               volume={volume}

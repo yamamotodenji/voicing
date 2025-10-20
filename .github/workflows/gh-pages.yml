@@ -1,63 +1,58 @@
+# GitHub Actions ワークフロー定義
+# このファイルは GitHub Pages への自動デプロイを設定する
 name: Deploy to GitHub Pages
 
+# ワークフローの実行条件を定義
 on:
   push:
     branches:
-      - main
-  workflow_dispatch:
+      - main  # mainブランチにプッシュされた時に実行
+  workflow_dispatch:  # 手動実行も可能にする
 
+# GitHub Actions に必要な権限を付与
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write  # リポジトリの内容を書き換える権限（gh-pagesブランチへのプッシュに必要）
 
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
-
+# ジョブの定義（並列実行可能な処理単位）
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  deploy:  # ジョブ名
+    runs-on: ubuntu-latest  # Ubuntu の最新版で実行
+    
+    # ステップの定義（順次実行される処理）
     steps:
+      # ステップ1: リポジトリのコードをチェックアウト
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # GitHub公式のチェックアウトアクション
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
+      # ステップ2: Node.js 環境をセットアップ
       - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: 'npm'
+        uses: actions/setup-node@v4  # GitHub公式のNode.jsセットアップアクション
+        with:  # アクションに渡すパラメータ
+          node-version: 18  # Node.js 18を使用
+          cache: 'npm'  # npmのキャッシュを有効化（ビルド時間短縮）
+          cache-dependency-path: 'client/package-lock.json'  # キャッシュのキーとなるファイル
 
+      # ステップ3: 依存関係をインストール
       - name: Install dependencies
-        run: npm run install-deps
+        run: cd client && npm install  # clientディレクトリに移動してnpm install実行
 
+      # ステップ4: アプリケーションをビルド
       - name: Build
-        run: npm run build
+        run: cd client && npm run build  # React アプリを本番用にビルド
 
-      - name: Prepare dist for Pages
+      # ステップ5: SPA（Single Page Application）の404フォールバックを追加
+      # GitHub Pages は SPA のクライアントサイドルーティングをサポートしていないため、
+      # 404.html を作成して index.html と同じ内容にする
+      - name: Add SPA 404 fallback
         run: |
-          mkdir -p ./dist
-          cp -r ./client/build/* ./dist/
-          # SPA fallback
-          cp ./dist/index.html ./dist/404.html
+          cp ./client/build/index.html ./client/build/404.html
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      # ステップ6: gh-pages ブランチにデプロイ
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v3  # サードパーティのデプロイアクション
+        with:  # アクションに渡すパラメータ
+          github_token: ${{ secrets.GITHUB_TOKEN }}  # GitHub の認証トークン
+          publish_dir: ./client/build  # デプロイするディレクトリ（ビルド成果物）
+          publish_branch: gh-pages  # デプロイ先のブランチ名
 
 

@@ -107,8 +107,6 @@ const Button = styled.button`
 interface ControlPanelProps {
   voicingType: 'close' | 'open' | 'drop2' | 'drop3';
   onVoicingTypeChange: (type: 'close' | 'open' | 'drop2' | 'drop3') => void;
-  instrument: 'piano' | 'synth' | 'organ' | 'strings';
-  onInstrumentChange: (instrument: 'piano' | 'synth' | 'organ' | 'strings') => void;
   tempo: number;
   onTempoChange: (tempo: number) => void;
   volume: number;
@@ -120,8 +118,6 @@ interface ControlPanelProps {
 const ControlPanel: React.FC<ControlPanelProps> = ({
   voicingType,
   onVoicingTypeChange,
-  instrument,
-  onInstrumentChange,
   tempo,
   onTempoChange,
   volume,
@@ -136,12 +132,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     { value: 'drop3', label: 'Drop 3' }
   ] as const;
 
-  const instruments = [
-    { value: 'piano', label: 'ピアノ' },
-    { value: 'synth', label: 'シンセ' },
-    { value: 'organ', label: 'オルガン' },
-    { value: 'strings', label: 'ストリングス' }
-  ] as const;
 
   return (
     <Panel>
@@ -162,20 +152,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         </ButtonGroup>
       </ControlGroup>
 
-      <ControlGroup>
-        <Label>楽器音色</Label>
-        <ButtonGroup>
-          {instruments.map((inst) => (
-            <Button
-              key={inst.value}
-              className={instrument === inst.value ? 'active' : ''}
-              onClick={() => onInstrumentChange(inst.value)}
-            >
-              {inst.label}
-            </Button>
-          ))}
-        </ButtonGroup>
-      </ControlGroup>
 
       <ControlGroup>
         <Label>テンポ: {tempo} BPM</Label>

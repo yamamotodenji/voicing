@@ -1,26 +1,26 @@
 import * as Tone from 'tone';
-import { Note, Voicing } from '../types/music';
+import { Voicing } from '../types/music';
 
 class AudioPlayer {
   private synth: Tone.PolySynth;
   private isInitialized = false;
 
   constructor() {
-    // ポリシンセサイザーを作成（最大8音同時発音）
+    // オルガン音色のポリシンセサイザーを作成（最大8音同時発音）
     this.synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: {
-        type: 'sine'
+        type: 'square'
       },
       envelope: {
-        attack: 0.1,
-        decay: 0.2,
-        sustain: 0.3,
-        release: 1.0
+        attack: 0.01,
+        decay: 0.1,
+        sustain: 0.8,
+        release: 0.5
       }
     }).toDestination();
 
-    // 音量を調整
-    this.synth.volume.value = -12;
+    // 音量を調整（デフォルトは控えめに）
+    this.synth.volume.value = -24;
   }
 
   // オーディオコンテキストを初期化
@@ -37,16 +37,6 @@ class AudioPlayer {
     }
   }
 
-  // 単一のノートを再生
-  playNote(note: Note, duration: string = '4n'): void {
-    if (!this.isInitialized) {
-      console.warn('オーディオプレイヤーが初期化されていません');
-      return;
-    }
-
-    const noteString = `${note.name}${note.octave}`;
-    this.synth.triggerAttackRelease(noteString, duration);
-  }
 
   // ボイシングを再生
   playVoicing(voicing: Voicing, duration: string = '2n'): void {
@@ -79,31 +69,6 @@ class AudioPlayer {
     }
   }
 
-  // コード進行をループ再生
-  startLoop(voicings: Voicing[], tempo: number = 120): void {
-    if (!this.isInitialized) {
-      console.warn('オーディオプレイヤーが初期化されていません');
-      return;
-    }
-
-    Tone.Transport.bpm.value = tempo;
-    Tone.Transport.cancel();
-
-    // ループパターンを作成
-    const pattern = new Tone.Pattern((time, note) => {
-      this.synth.triggerAttackRelease(note, '2n', time);
-    }, voicings.map(v => v.notes.map(note => `${note.name}${note.octave}`)), 'up');
-
-    pattern.interval = '2n';
-    pattern.start(0);
-    Tone.Transport.start();
-  }
-
-  // ループを停止
-  stopLoop(): void {
-    Tone.Transport.stop();
-    Tone.Transport.cancel();
-  }
 
   // 全ての音を停止
   stopAll(): void {
@@ -111,70 +76,6 @@ class AudioPlayer {
     Tone.Transport.stop();
   }
 
-  // 楽器音色を変更
-  setInstrument(type: 'piano' | 'synth' | 'organ' | 'strings'): void {
-    this.synth.dispose();
-    
-    switch (type) {
-      case 'piano':
-        this.synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: {
-            type: 'sine'
-          },
-          envelope: {
-            attack: 0.1,
-            decay: 0.2,
-            sustain: 0.3,
-            release: 1.0
-          }
-        }).toDestination();
-        break;
-        
-      case 'synth':
-        this.synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: {
-            type: 'sawtooth'
-          },
-          envelope: {
-            attack: 0.1,
-            decay: 0.2,
-            sustain: 0.3,
-            release: 1.0
-          }
-        }).toDestination();
-        break;
-        
-      case 'organ':
-        this.synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: {
-            type: 'square'
-          },
-          envelope: {
-            attack: 0.01,
-            decay: 0.1,
-            sustain: 0.8,
-            release: 0.5
-          }
-        }).toDestination();
-        break;
-        
-      case 'strings':
-        this.synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: {
-            type: 'triangle'
-          },
-          envelope: {
-            attack: 0.5,
-            decay: 0.2,
-            sustain: 0.7,
-            release: 2.0
-          }
-        }).toDestination();
-        break;
-    }
-    
-    this.synth.volume.value = -12;
-  }
 
   // 音量を調整
   setVolume(volume: number): void {

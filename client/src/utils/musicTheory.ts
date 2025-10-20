@@ -15,7 +15,8 @@ export function noteToSemitone(noteName: string): number {
 
 // 半音数からノート名を取得
 export function semitoneToNote(semitone: number): Note {
-  const octave = Math.floor(semitone / 12);
+  // MIDIノート番号60がC4に対応
+  const octave = Math.floor(semitone / 12); // C4 = 60なので、-1を削除
   const noteIndex = semitone % 12;
   const noteName = NOTE_NAMES[noteIndex];
   
