@@ -8,10 +8,11 @@
 // 4. オーディオ再生の制御
 // 5. 音楽理論計算の統合
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 // React: UIライブラリ（コンポーネント作成の基盤）
 // useState: コンポーネントの状態を管理するHook
 // useEffect: 副作用（データ取得、DOM操作など）を処理するHook
+// useCallback: 関数をメモ化してパフォーマンスを最適化するHook
 
 import styled from 'styled-components';
 // styled-components: CSS-in-JSライブラリ
@@ -71,14 +72,6 @@ const Title = styled.h1`
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); // テキストシャドウ（立体感）
 `;
 
-// サブタイトル
-// アプリケーションの説明文
-const Subtitle = styled.p`
-  font-size: 1.2rem;  // 中サイズのフォント（19.2px相当）
-  color: rgba(255, 255, 255, 0.9); // 半透明の白色（透明度0.9）
-  margin: 0;          // マージンなし
-  font-weight: 300;   // 細字（light）
-`;
 
 // コンテンツグリッド（2列レイアウト）
 // CSS Gridを使用してレスポンシブなレイアウトを実現
@@ -183,7 +176,7 @@ function App() {
   
   // オーディオプレイヤーの初期化関数
   // ブラウザのWeb Audio APIを有効化し、ユーザーインタラクション後に音声再生を可能にする
-  const handleInitializeAudio = async () => {
+  const handleInitializeAudio = useCallback(async () => {
     try {
       // Tone.jsのオーディオコンテキストを開始
       // ブラウザのセキュリティ制限により、ユーザーインタラクションが必要
@@ -197,11 +190,11 @@ function App() {
       console.error('オーディオ初期化エラー:', error);
       alert('オーディオの初期化に失敗しました。ブラウザの設定を確認してください。');
     }
-  };
+  }, [volume, tempo]);
 
   // ボイシング生成関数
   // 入力されたコード進行から音楽理論に基づいたスムーズなボイシングを生成
-  const handleGenerateVoicing = async () => {
+  const handleGenerateVoicing = useCallback(async () => {
     // コード進行が空の場合は処理を中断
     if (chordProgression.length === 0) return;
     
@@ -218,11 +211,11 @@ function App() {
     } finally {
       setIsLoading(false); // ローディング状態を終了（成功・失敗に関わらず実行）
     }
-  };
+  }, [chordProgression, voicingType]);
 
   // 単一ボイシングの再生関数
   // 選択されたボイシングを即座に再生
-  const handlePlayVoicing = (voicing: Voicing) => {
+  const handlePlayVoicing = useCallback((voicing: Voicing) => {
     // オーディオが初期化されていない場合は警告を表示
     if (!isAudioInitialized) {
       alert('まずオーディオを初期化してください。');
@@ -231,10 +224,10 @@ function App() {
     
     // ボイシングを2分音符の長さで再生
     audioPlayer.playVoicing(voicing, '2n');
-  };
+  }, [isAudioInitialized]);
 
   // コード進行全体の再生
-  const handlePlayProgression = () => {
+  const handlePlayProgression = useCallback(() => {
     if (!isAudioInitialized) {
       alert('まずオーディオを初期化してください。');
       return;
@@ -249,30 +242,30 @@ function App() {
     setTimeout(() => {
       setIsPlaying(false);
     }, (voicings.length * 2 * 60 / tempo) * 1000);
-  };
+  }, [isAudioInitialized, voicings, tempo]);
 
   // 再生停止
-  const handleStopPlayback = () => {
+  const handleStopPlayback = useCallback(() => {
     audioPlayer.stopAll();
     setIsPlaying(false);
-  };
+  }, []);
 
 
   // テンポ変更
-  const handleTempoChange = (newTempo: number) => {
+  const handleTempoChange = useCallback((newTempo: number) => {
     setTempo(newTempo);
     if (isAudioInitialized) {
       audioPlayer.setTempo(newTempo);
     }
-  };
+  }, [isAudioInitialized]);
 
   // 音量変更
-  const handleVolumeChange = (newVolume: number) => {
+  const handleVolumeChange = useCallback((newVolume: number) => {
     setVolume(newVolume);
     if (isAudioInitialized) {
       audioPlayer.setVolume(newVolume - 50); // -50 to 0 range
     }
-  };
+  }, [isAudioInitialized]);
 
   // ===== useEffectフック（副作用の処理） =====
   // ボイシングタイプ変更時に再生成
@@ -282,9 +275,7 @@ function App() {
     if (chordProgression.length > 0 && voicings.length > 0) {
       handleGenerateVoicing();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // ESLintの警告を無効化（handleGenerateVoicingは依存配列に含めない）
-  }, [voicingType]);
+  }, [voicingType, chordProgression.length, voicings.length, handleGenerateVoicing]);
 
   // ===== JSXレンダリング =====
   // return文でJSXを返すことで、コンポーネントのUIを定義
