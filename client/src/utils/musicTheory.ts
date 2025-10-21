@@ -1,40 +1,53 @@
+// 音楽理論計算ユーティリティ
+// コード解析、ボイシング生成、音程計算などの機能を提供
+
 import { Note, Chord, Voicing, CHORD_QUALITIES, NOTE_NAMES } from '../types/music';
 
-// ノート名から半音数を取得
+// ノート名から半音数を取得する関数
+// 例: "C4" → 60, "F#3" → 54
 export function noteToSemitone(noteName: string): number {
-  const note = noteName.replace(/[0-9]/g, ''); // オクターブ番号を除去
+  // オクターブ番号を除去して音名のみを取得
+  const note = noteName.replace(/[0-9]/g, ''); 
+  // オクターブ番号を抽出（デフォルトは4）
   const octave = parseInt(noteName.replace(/[^0-9]/g, '')) || 4;
+  // 音名から12音階でのインデックスを取得
   const noteIndex = NOTE_NAMES.indexOf(note);
   
+  // 無効な音名の場合はエラーを投げる
   if (noteIndex === -1) {
     throw new Error(`無効なノート名: ${noteName}`);
   }
   
+  // 半音数 = 音名インデックス + (オクターブ × 12)
   return noteIndex + (octave * 12);
 }
 
-// 半音数からノート名を取得
+// 半音数からノート情報を取得する関数
+// 例: 60 → { name: "C", octave: 4, frequency: 261.63 }
 export function semitoneToNote(semitone: number): Note {
   // MIDIノート番号60がC4に対応
-  const octave = Math.floor(semitone / 12); // C4 = 60なので、-1を削除
-  const noteIndex = semitone % 12;
-  const noteName = NOTE_NAMES[noteIndex];
+  const octave = Math.floor(semitone / 12); // オクターブ番号を計算
+  const noteIndex = semitone % 12;          // 12音階での位置を計算
+  const noteName = NOTE_NAMES[noteIndex];   // 音名を取得
   
   return {
     name: noteName,
     octave: octave,
-    frequency: 440 * Math.pow(2, (semitone - 69) / 12) // A4 = 440Hz
+    // A4 = 440Hzを基準とした周波数計算
+    frequency: 440 * Math.pow(2, (semitone - 69) / 12) 
   };
 }
 
-// コードシンボルを解析
+// コードシンボルを解析してChordオブジェクトに変換
+// 例: "Cmaj7" → { root: "C", quality: "major7", extensions: [], bass: undefined }
 export function parseChordSymbol(chordSymbol: string): Chord {
   const chord = chordSymbol.trim();
   
-  // ルートノートを抽出
+  // ルートノートを抽出（シャープ・フラット対応）
   let root = '';
   let remaining = chord;
   
+  // シャープ・フラット付きの音名をチェック
   if (chord.startsWith('C#') || chord.startsWith('Db')) {
     root = chord.startsWith('C#') ? 'C#' : 'Db';
     remaining = chord.substring(2);
@@ -51,26 +64,29 @@ export function parseChordSymbol(chordSymbol: string): Chord {
     root = chord.startsWith('A#') ? 'A#' : 'Bb';
     remaining = chord.substring(2);
   } else {
+    // ナチュラル音名の場合
     root = chord[0];
     remaining = chord.substring(1);
   }
   
-  // クオリティを判定
-  let quality = 'major';
+  // コードクオリティを判定（優先順位順）
+  let quality = 'major'; // デフォルトはメジャー
   const extensions: string[] = [];
   
+  // 7thコードの判定（maj7 > m7 > 7の順）
   if (remaining.includes('maj7') || remaining.includes('M7')) {
     quality = 'major7';
     remaining = remaining.replace(/maj7|M7/g, '');
   } else if (remaining.includes('m7')) {
     quality = 'minor7';
     remaining = remaining.replace('m7', '');
-  } else if (remaining.includes('m')) {
-    quality = 'minor';
-    remaining = remaining.replace('m', '');
   } else if (remaining.includes('7')) {
     quality = 'dominant';
     remaining = remaining.replace('7', '');
+  } else if (remaining.includes('m')) {
+    // 3和音のマイナー
+    quality = 'minor';
+    remaining = remaining.replace('m', '');
   } else if (remaining.includes('dim')) {
     quality = 'diminished';
     remaining = remaining.replace('dim', '');
@@ -85,8 +101,7 @@ export function parseChordSymbol(chordSymbol: string): Chord {
     remaining = remaining.replace('sus4', '');
   }
   
-  
-  // テンションを抽出
+  // テンション（9th, 11th, 13thなど）を抽出
   const tensionMatches = remaining.match(/(\d+)/g);
   if (tensionMatches) {
     extensions.push(...tensionMatches);
@@ -100,22 +115,30 @@ export function parseChordSymbol(chordSymbol: string): Chord {
   };
 }
 
-// コードの構成音を生成
+// コードの構成音を生成する関数
+// 例: { root: "C", quality: "major7" } → [C4, E4, G4, B4]
 export function generateChordNotes(chord: Chord, octave: number = 4): Note[] {
+  // ルート音の半音数を取得
   const rootSemitone = noteToSemitone(chord.root + octave);
+  // コードクオリティに対応する音程を取得
   const intervals = CHORD_QUALITIES[chord.quality as keyof typeof CHORD_QUALITIES] || CHORD_QUALITIES.major;
   
+  // 基本構成音を生成
   const notes: Note[] = intervals.map(interval => {
     const semitone = rootSemitone + interval;
     return semitoneToNote(semitone);
   });
   
-  // テンションを追加
+  // テンション（9th, 11th, 13thなど）を追加
   chord.extensions.forEach(ext => {
     const tensionInterval = parseInt(ext);
+    // 7度より上の音（テンション）の場合のみ追加
     if (tensionInterval > 7) {
+      // オクターブオフセットを計算（9th=2オクターブ上、11th=2オクターブ上、13th=2オクターブ上）
       const octaveOffset = Math.floor((tensionInterval - 1) / 7) * 12;
+      // オクターブ内での音程を計算
       const intervalInOctave = ((tensionInterval - 1) % 7) + 1;
+      // テンション音の半音数を計算
       const tensionSemitone = rootSemitone + octaveOffset + intervalInOctave;
       notes.push(semitoneToNote(tensionSemitone));
     }
@@ -163,12 +186,16 @@ function createFourNoteVoicing(notes: Note[]): Note[] {
   return result.slice(0, 4);
 }
 
-// ボイシングを生成
+// ボイシングを生成する関数
+// コードの構成音を異なる配置（close, open, drop2, drop3）で配置
 export function generateVoicing(chord: Chord, type: 'close' | 'open' | 'drop2' | 'drop3' = 'close', octave: number = 4): Voicing {
+  // コードの構成音を取得
   const notes = generateChordNotes(chord, octave);
   
   switch (type) {
     case 'close':
+      // クローズボイシング（密集配置）
+      // 各音が隣接する音程で配置される
       return {
         notes: createFourNoteVoicing(notes),
         type: 'close',
@@ -176,7 +203,8 @@ export function generateVoicing(chord: Chord, type: 'close' | 'open' | 'drop2' |
       };
       
     case 'open':
-      // 開離配置（上三声の間隔を和音の構成音1つ分ずつ空けた配置）
+      // オープンボイシング（開離配置）
+      // 上三声の間隔を和音の構成音1つ分ずつ空けた配置
       const openNotes = createFourNoteVoicing(notes);
       if (openNotes.length >= 4) {
         // 適度な開離配置（オクターブ5を超えないように制限）
@@ -192,7 +220,8 @@ export function generateVoicing(chord: Chord, type: 'close' | 'open' | 'drop2' |
       };
       
     case 'drop2':
-      // Drop 2ボイシング（2番目の音を1オクターブ下げる）
+      // Drop 2ボイシング
+      // 2番目の音を1オクターブ下げる配置
       // 音楽理論的により自然な響きを提供
       const drop2Notes = createFourNoteVoicing(notes);
       if (drop2Notes.length >= 2) {
@@ -205,7 +234,8 @@ export function generateVoicing(chord: Chord, type: 'close' | 'open' | 'drop2' |
       };
       
     case 'drop3':
-      // Drop 3ボイシング（3番目の音を1オクターブ下げる）
+      // Drop 3ボイシング
+      // 3番目の音を1オクターブ下げる配置
       // より広い音域での響きを提供
       const drop3Notes = createFourNoteVoicing(notes);
       if (drop3Notes.length >= 3) {
@@ -218,6 +248,7 @@ export function generateVoicing(chord: Chord, type: 'close' | 'open' | 'drop2' |
       };
       
     default:
+      // デフォルトはクローズボイシング
       return {
         notes: createFourNoteVoicing(notes),
         type: 'close',
