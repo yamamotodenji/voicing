@@ -137,7 +137,10 @@ function App() {
       setVoicings(generatedVoicings);
     } catch (error) {
       console.error('ボイシング生成エラー:', error);
-      alert('ボイシングの生成に失敗しました。');
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'ボイシングの生成に失敗しました。';
+      alert(`エラー: ${errorMessage}\n\n無効なコード名が含まれている可能性があります。\nC#, Db, D#, Eb, F#, Gb, G#, Ab, A#, Bb などの形式で入力してください。`);
     } finally {
       setIsLoading(false);
     }

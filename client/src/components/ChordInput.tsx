@@ -128,7 +128,7 @@ const ChordInput: React.FC<ChordInputProps> = ({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="例: C, Am, F, G"
+          placeholder="例: C, Am, F, G または C#, Db, Bb"
           disabled={isLoading}
         />
         <Button onClick={handleAddChord} disabled={isLoading || !inputValue.trim()}>

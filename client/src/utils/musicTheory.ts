@@ -2,12 +2,32 @@ import { Note, Chord, Voicing, CHORD_QUALITIES, NOTE_NAMES } from '../types/musi
 
 // ノート名から半音数を取得
 export function noteToSemitone(noteName: string): number {
-  const note = noteName.replace(/[0-9]/g, ''); // オクターブ番号を除去
+  let note = noteName.replace(/[0-9]/g, ''); // オクターブ番号を除去
   const octave = parseInt(noteName.replace(/[^0-9]/g, '')) || 4;
+  
+  // フラット記号(♭)をbに変換、シャープ記号(♯)を#に変換
+  note = note.replace(/♭/g, 'b').replace(/♯/g, '#');
+  
+  // NOTE_NAMESに存在しないコード（Cb, Fb）をエンハーモニック等価に変換
+  const enharmonicMap: { [key: string]: string } = {
+    'Cb': 'B',
+    'Fb': 'E',
+  };
+  
+  if (enharmonicMap[note]) {
+    note = enharmonicMap[note];
+    // エンハーモニック変換の場合、オクターブを調整
+    const adjustedOctave = octave - 1;
+    const noteIndex = NOTE_NAMES.indexOf(note);
+    if (noteIndex !== -1) {
+      return noteIndex + (adjustedOctave * 12);
+    }
+  }
+  
   const noteIndex = NOTE_NAMES.indexOf(note);
   
   if (noteIndex === -1) {
-    throw new Error(`無効なノート名: ${noteName}`);
+    throw new Error(`無効なノート名: ${noteName} (正規化後: ${note})`);
   }
   
   return noteIndex + (octave * 12);
@@ -29,29 +49,46 @@ export function semitoneToNote(semitone: number): Note {
 
 // コードシンボルを解析
 export function parseChordSymbol(chordSymbol: string): Chord {
-  const chord = chordSymbol.trim();
+  // 入力を正規化: 大文字に変換、フラット記号(♭)をbに変換
+  let chord = chordSymbol.trim();
+  chord = chord.replace(/♭/g, 'b').replace(/♯/g, '#');
   
-  // ルートノートを抽出
+  // 最初の文字を大文字に（小文字で入力された場合も対応）
+  if (chord.length > 0) {
+    chord = chord[0].toUpperCase() + chord.substring(1);
+  }
+  
+  // ルートノートを抽出（大文字小文字を考慮）
   let root = '';
   let remaining = chord;
   
-  if (chord.startsWith('C#') || chord.startsWith('Db')) {
-    root = chord.startsWith('C#') ? 'C#' : 'Db';
-    remaining = chord.substring(2);
-  } else if (chord.startsWith('D#') || chord.startsWith('Eb')) {
-    root = chord.startsWith('D#') ? 'D#' : 'Eb';
-    remaining = chord.substring(2);
-  } else if (chord.startsWith('F#') || chord.startsWith('Gb')) {
-    root = chord.startsWith('F#') ? 'F#' : 'Gb';
-    remaining = chord.substring(2);
-  } else if (chord.startsWith('G#') || chord.startsWith('Ab')) {
-    root = chord.startsWith('G#') ? 'G#' : 'Ab';
-    remaining = chord.substring(2);
-  } else if (chord.startsWith('A#') || chord.startsWith('Bb')) {
-    root = chord.startsWith('A#') ? 'A#' : 'Bb';
-    remaining = chord.substring(2);
-  } else {
-    root = chord[0];
+  // シャープ/フラットを含むコードの判定（大文字小文字を考慮）
+  const sharpFlatPatterns = [
+    { pattern: /^C[#♯]/i, root: 'C#', len: 2 },
+    { pattern: /^Cb/i, root: 'Cb', len: 2 },
+    { pattern: /^Db/i, root: 'Db', len: 2 },
+    { pattern: /^D[#♯]/i, root: 'D#', len: 2 },
+    { pattern: /^Eb/i, root: 'Eb', len: 2 },
+    { pattern: /^F[#♯]/i, root: 'F#', len: 2 },
+    { pattern: /^Gb/i, root: 'Gb', len: 2 },
+    { pattern: /^G[#♯]/i, root: 'G#', len: 2 },
+    { pattern: /^Ab/i, root: 'Ab', len: 2 },
+    { pattern: /^A[#♯]/i, root: 'A#', len: 2 },
+    { pattern: /^Bb/i, root: 'Bb', len: 2 },
+  ];
+  
+  let matched = false;
+  for (const { pattern, root: matchedRoot, len } of sharpFlatPatterns) {
+    if (pattern.test(chord)) {
+      root = matchedRoot;
+      remaining = chord.substring(len);
+      matched = true;
+      break;
+    }
+  }
+  
+  if (!matched) {
+    root = chord[0].toUpperCase();
     remaining = chord.substring(1);
   }
   
