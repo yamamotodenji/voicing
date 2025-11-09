@@ -66,26 +66,41 @@ class AudioPlayer {
 
   // コード進行を順次再生する関数
   // 各ボイシングを指定したテンポで順番に再生
-  async playProgression(voicings: Voicing[], tempo: number = 120): Promise<void> {
+  async playProgression(voicings: Voicing[], tempo: number = 120, onStop?: () => void): Promise<void> {
     if (!this.isInitialized) {
       console.warn('オーディオプレイヤーが初期化されていません');
       return;
     }
 
+    // 既存のスケジュールをクリア
+    Tone.Transport.cancel(0);
+
     // テンポを設定（BPM = Beats Per Minute）
     Tone.Transport.bpm.value = tempo;
 
     // 各ボイシングを順次再生
+    let totalDuration = 0;
     for (let i = 0; i < voicings.length; i++) {
       const voicing = voicings[i];
-      // 時間を指定（2分音符間隔で配置）
-      const time = `+${i * 2}n`; // +0n, +2n, +4n, +6n...
+      const duration = Tone.Time('2n').toSeconds();
+      const time = totalDuration;
       
       // ノートを文字列形式に変換
       const noteStrings = voicing.notes.map(note => `${note.name}${note.octave}`);
       // 指定した時間に再生をスケジュール
       this.synth.triggerAttackRelease(noteStrings, '2n', time);
+      totalDuration += duration;
     }
+
+    // 再生終了時にコールバックを実行するスケジュール
+    if (onStop) {
+      Tone.Transport.scheduleOnce(() => {
+        onStop();
+      }, totalDuration);
+    }
+
+    // トランスポートを開始
+    Tone.Transport.start();
   }
 
   // 全ての音を停止する関数

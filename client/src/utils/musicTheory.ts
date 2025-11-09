@@ -3,24 +3,52 @@
 
 import { Note, Chord, Voicing, CHORD_QUALITIES, NOTE_NAMES } from '../types/music';
 
+// 異名同音のマッピングを含むノートの半音価
+const NOTE_VALUES: { [key: string]: number } = {
+  'C': 0, 'B#': 0,
+  'C#': 1, 'Db': 1,
+  'D': 2,
+  'D#': 3, 'Eb': 3,
+  'E': 4, 'Fb': 4,
+  'F': 5, 'E#': 5,
+  'F#': 6, 'Gb': 6,
+  'G': 7,
+  'G#': 8, 'Ab': 8,
+  'A': 9,
+  'A#': 10, 'Bb': 10,
+  'B': 11, 'Cb': 11,
+};
+
 // ノート名から半音数を取得する関数
-// 例: "C4" → 60, "F#3" → 54
+// 例: "C4" → 60, "Db3" → 50
 export function noteToSemitone(noteName: string): number {
-  // オクターブ番号を除去して音名のみを取得
-  const note = noteName.replace(/[0-9]/g, ''); 
-  // オクターブ番号を抽出（デフォルトは4）
-  const octave = parseInt(noteName.replace(/[^0-9]/g, '')) || 4;
-  // 音名から12音階でのインデックスを取得
-  const noteIndex = NOTE_NAMES.indexOf(note);
-  
-  // 無効な音名の場合はエラーを投げる
-  if (noteIndex === -1) {
-    throw new Error(`無効なノート名: ${noteName} (正規化後: ${note})`);
+  const match = noteName.match(/^([A-G](?:#|b)?)(-?[0-9]+)$/);
+  if (!match) {
+    // オクターブなしのノート名（例："C", "Db"）も考慮
+    const singleNoteMatch = noteName.match(/^([A-G](?:#|b)?)$/);
+    if(singleNoteMatch) {
+      const note = singleNoteMatch[1];
+      const octave = 4; // デフォルトオクターブ
+      const noteValue = NOTE_VALUES[note];
+      if (noteValue === undefined) {
+        throw new Error(`無効なノート名: ${noteName}`);
+      }
+      return noteValue + (octave + 1) * 12;
+    }
+    throw new Error(`無効なノート名の形式: ${noteName}`);
   }
-  
-  // 半音数 = 音名インデックス + (オクターブ × 12)
-  return noteIndex + (octave * 12);
+
+  const [, note, octaveStr] = match;
+  const octave = parseInt(octaveStr, 10);
+  const noteValue = NOTE_VALUES[note];
+
+  if (noteValue === undefined) {
+    throw new Error(`無効なノート名: ${note}`);
+  }
+
+  return noteValue + octave * 12;
 }
+
 
 // 半音数からノート情報を取得する関数
 // 例: 60 → { name: "C", octave: 4, frequency: 261.63 }
@@ -28,7 +56,7 @@ export function semitoneToNote(semitone: number): Note {
   // MIDIノート番号60がC4に対応
   const octave = Math.floor(semitone / 12); // オクターブ番号を計算
   const noteIndex = semitone % 12;          // 12音階での位置を計算
-  const noteName = NOTE_NAMES[noteIndex];   // 音名を取得
+  const noteName = NOTE_NAMES[noteIndex];   // 音名を取得（シャープ優先）
   
   return {
     name: noteName,
@@ -41,39 +69,19 @@ export function semitoneToNote(semitone: number): Note {
 // コードシンボルを解析してChordオブジェクトに変換
 // 例: "Cmaj7" → { root: "C", quality: "major7", extensions: [], bass: undefined }
 export function parseChordSymbol(chordSymbol: string): Chord {
-  // 入力を正規化: 大文字に変換、フラット記号(♭)をbに変換
-  let chord = chordSymbol.trim();
-  chord = chord.replace(/♭/g, 'b').replace(/♯/g, '#');
+  // 入力を正規化
+  let chord = chordSymbol.trim().replace(/♭/g, 'b').replace(/♯/g, '#');
   
-  // 最初の文字を大文字に（小文字で入力された場合も対応）
-  if (chord.length > 0) {
-    chord = chord[0].toUpperCase() + chord.substring(1);
-  }
-  
-  // ルートノートを抽出（シャープ・フラット対応）
+  // ルートノートを抽出
   let root = '';
-  let remaining = chord;
-  
-  // シャープ・フラット付きの音名をチェック
-  if (chord.startsWith('C#') || chord.startsWith('Db')) {
-    root = chord.startsWith('C#') ? 'C#' : 'Db';
-    remaining = chord.substring(2);
-  } else if (chord.startsWith('D#') || chord.startsWith('Eb')) {
-    root = chord.startsWith('D#') ? 'D#' : 'Eb';
-    remaining = chord.substring(2);
-  } else if (chord.startsWith('F#') || chord.startsWith('Gb')) {
-    root = chord.startsWith('F#') ? 'F#' : 'Gb';
-    remaining = chord.substring(2);
-  } else if (chord.startsWith('G#') || chord.startsWith('Ab')) {
-    root = chord.startsWith('G#') ? 'G#' : 'Ab';
-    remaining = chord.substring(2);
-  } else if (chord.startsWith('A#') || chord.startsWith('Bb')) {
-    root = chord.startsWith('A#') ? 'A#' : 'Bb';
-    remaining = chord.substring(2);
+  let remaining = '';
+  const match = chord.match(/^[A-G](b|#)?/);
+
+  if (match) {
+    root = match[0];
+    remaining = chord.substring(root.length);
   } else {
-    // ナチュラル音名の場合
-    root = chord[0];
-    remaining = chord.substring(1);
+    throw new Error(`無効なコードシンボルです: ${chordSymbol}`);
   }
   
   // コードクオリティを判定（優先順位順）
@@ -324,6 +332,8 @@ export function generateSmoothVoicings(chordProgression: string[], voicingType: 
         const note2 = currentVoicing.notes[k];
         const prevNote1 = prevVoicing.notes[j];
         const prevNote2 = prevVoicing.notes[k];
+
+        if (!prevNote1 || !prevNote2) continue;
         
         // 連続8度・連続5度のチェック
         const currentInterval = Math.abs(noteToSemitone(note1.name + note1.octave) - noteToSemitone(note2.name + note2.octave)) % 12;

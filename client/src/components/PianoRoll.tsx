@@ -5,7 +5,7 @@ import React from 'react';
 import styled from 'styled-components';
 // 自作の型定義ファイルからVoicing型をインポート
 // 型定義ファイルはTypeScriptで型の安全性を保つために使用
-import { Voicing } from '../types/music';
+import { Voicing, NOTE_NAMES } from '../types/music';
 
 // ===== styled-components によるスタイル定義 =====
 // styled-componentsは、JavaScriptでCSSを書くライブラリ
@@ -51,24 +51,24 @@ const PianoKeyboard = styled.div`
   padding-top: 30px;       // Timeバーの高さ分のオフセット
 `;
 
-// ピアノの鍵盤（白鍵のみ）
-const PianoKey = styled.div`
+// ピアノの鍵盤（白鍵と黒鍵）
+const PianoKey = styled.div<{ isBlackKey: boolean }>`
   height: 20px;
-  background: #f0f0f0;
+  background: ${props => props.isBlackKey ? '#333' : '#f0f0f0'};
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.6rem;
   font-weight: 600;
-  color: #333;
+  color: ${props => props.isBlackKey ? '#fff' : '#333'};
   position: relative;
+  border-bottom: 1px solid #444;
 `;
 
 // 音名ラベル
 const NoteLabel = styled.div`
   font-size: 0.5rem;
   font-weight: 700;
-  color: #333;
   text-align: center;
 `;
 
@@ -103,14 +103,13 @@ const TimeLabel = styled.div`
 const GridContainer = styled.div`
   position: relative;
   height: calc(100% - 30px);  // CSS calc() 関数で計算
-  // repeating-linear-gradient でグリッド線を描画
-  // ピアノ鍵盤の20px間隔に合わせて調整
   background: 
     repeating-linear-gradient(
-      to bottom,
-      transparent,
-      transparent 19px,
-      #444 20px
+      to right,
+      #444 0px,
+      #444 1px,
+      transparent 1px,
+      transparent 80px
     );
 `;
 
@@ -123,8 +122,8 @@ const NoteBlock = styled.div<{
 }>`
   position: absolute;
   height: 20px;
-  width: ${props => props.duration * 80}px;
-  left: ${props => props.chordIndex * 80 + 10}px;
+  width: ${props => props.duration * 80 - 2}px;
+  left: ${props => props.chordIndex * 80 + 1}px;
   top: ${props => props.noteIndex * 20}px;
   background: ${props => props.color};
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -167,7 +166,6 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
   // ピアノの鍵盤配列（C2からC6まで）
   // const は定数宣言（再代入不可）
   const octaves = [2, 3, 4, 5];  // 数値の配列
-  const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];  // 白鍵のみの音名
   
   // コードカラー（各コードに異なる色を割り当て）
   // 文字列の配列（16進数カラーコード）
@@ -195,7 +193,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
   // [...octaves].reverse() は配列のコピーを作ってから逆順にする
   // forEach は配列の各要素に対して関数を実行
   [...octaves].reverse().forEach(octave => {
-    [...noteNames].reverse().forEach(noteName => {
+    [...NOTE_NAMES].reverse().forEach(noteName => {
       // push で配列に要素を追加
       allNotes.push({
         name: noteName,                    // 音名
@@ -204,30 +202,10 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
     });
   });
 
-  // ===== デバッグ用の音マップ生成 =====
-  
-  // ボイシングの音をマップに変換（デバッグ用）
-  // Map は JavaScript の連想配列（キーと値のペアを格納）
-  // <string, { chordIndex: number; noteIndex: number }> は
-  // キーが文字列、値がオブジェクト（chordIndex と noteIndex を持つ）の型
-  const noteMap = new Map<string, { chordIndex: number; noteIndex: number }>();
-  
-  // forEach で配列の各要素を処理
-  // (voicing, chordIndex) は分割代入で、要素とインデックスを取得
-  voicings.forEach((voicing, chordIndex) => {
-    // テンプレートリテラル（バッククォート）で文字列を結合
-    console.log(`Chord ${chordIndex + 1}:`, voicing.notes.length, 'notes');
-    voicing.notes.forEach((note, noteIndex) => {
-      // 文字列結合でキーを作成
-      const key = `${note.name}${note.octave}`;
-      console.log(`  Note ${noteIndex + 1}: ${key}`);
-      // Map に値を設定
-      noteMap.set(key, {
-        chordIndex: chordIndex,
-        noteIndex: noteIndex
-      });
-    });
-  });
+
+
+
+
 
 
   // ===== レンダリング =====
@@ -257,9 +235,11 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
         <PianoKeyboard>
           {/* map メソッドで配列を変換してJSX要素の配列を作成 */}
           {allNotes.map((note) => {
+            const isBlackKey = note.name.includes('#');
             return (
               <PianoKey
                 key={`${note.name}${note.octave}`}  // key は React の必須プロパティ（一意の識別子）
+                isBlackKey={isBlackKey}
               >
                 <NoteLabel>
                   {note.name}{note.octave}  {/* テンプレートリテラルで文字列結合 */}

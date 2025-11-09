@@ -239,12 +239,9 @@ function App() {
     if (voicings.length === 0) return;
     
     setIsPlaying(true);
-    audioPlayer.playProgression(voicings, tempo);
-    
-    // 再生完了後に状態をリセット
-    setTimeout(() => {
+    audioPlayer.playProgression(voicings, tempo, () => {
       setIsPlaying(false);
-    }, (voicings.length * 2 * 60 / tempo) * 1000);
+    });
   }, [isAudioInitialized, voicings, tempo]);
 
   // 再生停止
