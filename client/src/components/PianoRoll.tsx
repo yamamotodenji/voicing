@@ -63,6 +63,7 @@ const PianoKey = styled.div<{ isBlackKey: boolean }>`
   color: ${props => props.isBlackKey ? '#fff' : '#333'};
   position: relative;
   border-bottom: 1px solid #444;
+  box-sizing: border-box;
 `;
 
 // 音名ラベル
@@ -114,7 +115,7 @@ const GridContainer = styled.div`
 `;
 
 // 音符ブロック
-const NoteBlock = styled.div<{ 
+const NoteBlock = styled.div<{
   noteIndex: number;
   chordIndex: number;
   duration: number;
@@ -137,6 +138,7 @@ const NoteBlock = styled.div<{
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   z-index: 3;
+  box-sizing: border-box;
 `;
 
 // 音符ブロック内のテキスト
@@ -162,11 +164,11 @@ interface PianoRollProps {
 // ({ voicings }) は分割代入で、props から voicings を取得
 const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
   // ===== 定数定義 =====
-  
+
   // ピアノの鍵盤配列（C2からC6まで）
   // const は定数宣言（再代入不可）
   const octaves = [2, 3, 4, 5];  // 数値の配列
-  
+
   // コードカラー（各コードに異なる色を割り当て）
   // 文字列の配列（16進数カラーコード）
   const chordColors = [
@@ -181,15 +183,15 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
   ];
 
   // ===== ピアノ鍵盤の生成 =====
-  
+
   // 全音階を生成（C6からC2まで、高い音から低い音へ）
   // ピアノロールでは高い音が上に表示されるため、逆順で生成
-  
+
   // TypeScript の型注釈
   // Array<{ name: string; octave: number }> は
   // オブジェクトの配列で、各オブジェクトは name（文字列）、octave（数値）を持つ
   const allNotes: Array<{ name: string; octave: number }> = [];
-  
+
   // [...octaves].reverse() は配列のコピーを作ってから逆順にする
   // forEach は配列の各要素に対して関数を実行
   [...octaves].reverse().forEach(octave => {
@@ -209,7 +211,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
 
 
   // ===== レンダリング =====
-  
+
   // ボイシングが空の場合はメッセージを表示
   // if 文で条件分岐
   if (voicings.length === 0) {
@@ -229,7 +231,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
   return (
     <PianoRollContainer>
       <Title>🎹 ピアノロール</Title>
-      
+
       <PianoRollWrapper>
         {/* 左側のピアノ鍵盤 */}
         <PianoKeyboard>
@@ -248,7 +250,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
             );
           })}
         </PianoKeyboard>
-        
+
         {/* 右側のグリッドエリア */}
         <TimelineContainer>
           {/* 上部のタイムライン */}
@@ -261,7 +263,7 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
               </div>
             ))}
           </Timeline>
-          
+
           {/* 音符ブロックのグリッド */}
           <GridContainer>
             {/* 二重の map：外側でコード、内側で音符を処理 */}
@@ -270,17 +272,17 @@ const PianoRoll: React.FC<PianoRollProps> = ({ voicings }) => {
                 // 音の位置をallNotes配列から見つける
                 // findIndex は条件に合う最初の要素のインデックスを返す
                 // これにより、ピアノ鍵盤の位置と音符ブロックの位置が一致する
-                const notePosition = allNotes.findIndex(n => 
+                const notePosition = allNotes.findIndex(n =>
                   n.name === note.name && n.octave === note.octave
                 );
-                
+
                 // 音が見つからない場合はスキップ（null を返すと何もレンダリングされない）
                 if (notePosition === -1) return null;
-                
+
                 // コードごとに異なる色を割り当て
                 // % 演算子で剰余を計算（色の配列を循環）
                 const color = chordColors[chordIndex % chordColors.length];
-                
+
                 return (
                   <NoteBlock
                     key={`${note.name}${note.octave}-${chordIndex}`}  // 一意のキー

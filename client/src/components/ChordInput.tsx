@@ -131,10 +131,10 @@ const ChordInput: React.FC<ChordInputProps> = ({
 }) => {
   // ===== 状態管理 =====
   // コンポーネント内で管理するローカル状態
-  
+
   // 入力フィールドの値
   const [inputValue, setInputValue] = useState('');
-  
+
   // 現在のコード進行（文字列の配列）
   const [chordProgression, setChordProgression] = useState<string[]>([]);
 
@@ -142,20 +142,32 @@ const ChordInput: React.FC<ChordInputProps> = ({
   // ユーザーのアクションに応じて状態を更新し、適切な処理を実行
 
   // コードを追加する関数
+  // 修正: カンマやスペースで区切られた複数のコードを一括で追加できるように改善
   const handleAddChord = () => {
-    const chord = inputValue.trim(); // 前後の空白を削除
-    // コードが空でなく、かつ重複していない場合のみ追加
-    if (chord && !chordProgression.includes(chord)) {
-      const newProgression = [...chordProgression, chord]; // スプレッド演算子で新しい配列を作成
-      setChordProgression(newProgression);                 // ローカル状態を更新
-      onChordProgressionChange(newProgression);            // 親コンポーネントに通知
-      setInputValue('');                                   // 入力フィールドをクリア
+    if (!inputValue.trim()) return;
+
+    // 入力値をカンマ、スペース、タブなどで分割
+    // 正規表現 /[,，\s]+/ は「カンマ(半角/全角)または空白文字の1回以上の繰り返し」にマッチします
+    const rawChords = inputValue.split(/[,，\s]+/);
+
+    // 空の文字列を除去し、有効なコードのみを抽出
+    const newChords = rawChords.filter(chord => chord.trim().length > 0);
+
+    if (newChords.length > 0) {
+      // 既存のコード進行に新しいコードを追加
+      // スプレッド演算子 (...) を使用して配列を展開・結合
+      const newProgression = [...chordProgression, ...newChords];
+
+      setChordProgression(newProgression);      // ローカル状態を更新
+      onChordProgressionChange(newProgression); // 親コンポーネントに通知
+      setInputValue('');                        // 入力フィールドをクリア
     }
   };
 
   // コードを削除する関数
   const handleRemoveChord = (index: number) => {
     // filterメソッドで指定されたインデックスの要素を除外した新しい配列を作成
+    // アンダースコア (_) は「使用しない引数」を意味する慣習的な書き方です
     const newProgression = chordProgression.filter((_, i) => i !== index);
     setChordProgression(newProgression);      // ローカル状態を更新
     onChordProgressionChange(newProgression); // 親コンポーネントに通知
@@ -181,7 +193,7 @@ const ChordInput: React.FC<ChordInputProps> = ({
     <InputContainer>
       {/* 入力フィールドのラベル */}
       <Label htmlFor="chord-input">コード進行を入力してください</Label>
-      
+
       {/* 入力フィールドと追加ボタンのコンテナ */}
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         {/* テキスト入力フィールド */}
@@ -191,18 +203,18 @@ const ChordInput: React.FC<ChordInputProps> = ({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="例: C, Am, F, G"
+          placeholder="例: C, Am, F, G (カンマやスペース区切りで複数入力可)"
           disabled={isLoading}
         />
         {/* 追加ボタン */}
-        <Button 
+        <Button
           onClick={handleAddChord}                           // クリック時のハンドラー
           disabled={isLoading || !inputValue.trim()}        // ローディング中または入力値が空の場合は無効化
         >
           追加
         </Button>
       </div>
-      
+
       {/* 条件付きレンダリング：コード進行が存在する場合のみ表示 */}
       {chordProgression.length > 0 && (
         <>
@@ -218,7 +230,7 @@ const ChordInput: React.FC<ChordInputProps> = ({
               </ChordTag>
             ))}
           </ChordList>
-          
+
           {/* アクションボタンのコンテナ */}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {/* ボイシング生成ボタン */}
@@ -226,9 +238,9 @@ const ChordInput: React.FC<ChordInputProps> = ({
               {isLoading ? '生成中...' : 'ボイシング生成'}
             </Button>
             {/* クリアボタン */}
-            <Button 
-              onClick={handleClearAll} 
-              disabled={isLoading} 
+            <Button
+              onClick={handleClearAll}
+              disabled={isLoading}
               style={{ background: '#ff4444' }}  // インラインスタイルで赤色に変更
             >
               クリア
