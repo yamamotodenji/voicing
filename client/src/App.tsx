@@ -112,7 +112,6 @@ function App() {
 
   // ボイシング生成ロジック
   const {
-    chordProgression,
     voicings,
     isLoading,
     voicingType,

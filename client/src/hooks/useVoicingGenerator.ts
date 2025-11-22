@@ -40,7 +40,7 @@ export const useVoicingGenerator = () => {
         if (chordProgression.length > 0 && voicings.length > 0) {
             generateVoicings();
         }
-    }, [voicingType, generateVoicings]); // 依存配列に注意：必要な値が変わった時だけ実行
+    }, [voicingType, generateVoicings]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return {
         chordProgression,
